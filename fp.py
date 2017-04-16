@@ -86,35 +86,35 @@ def get_movie_data(movie_title):
 # Its IMDB rating
 # A list of its actors (check out the data and consider how to get a list of strings that represent actor names!)
 # The number of languages in the movie
-
 class Movie():
-	def __init__(self, movie_response):
+	def __init__(self, movie_response): #where movie_response = dictionary with info about a movie
 		self.title = movie_response["Title"]
 		self.director = movie_response["Director"]
 		self.production = movie_response["Production"]
 		self.released = movie_response["Released"]
+		self.languages = movie_response["Language"]
 		self.runtime = movie_response["Runtime"]
-
 		self.actors = movie_response["Actors"]
-
 		self.plot = movie_response["Plot"]
 		self.genre = movie_response["Genre"]
 		self.website = movie_response["Website"]
-
 		self.ratings = {}
 		for avalue in movie_response["Ratings"]:
 			source = avalue["Source"]
 			value = avalue["Value"]
 			self.ratings[source] = value
-
 		self.boxoffice = movie_response["BoxOffice"]
 
+	def __str__(self):
+		return("{}".format(self.title))
+
+
 test = get_movie_data("V for Vendetta")
-movie = Movie(test)
-print(movie.actors)
-print(movie.ratings)
-
-
+test = Movie(test)
+print(test)
+# Optional but recommended: create a class or classes to handle the Twitter data and make it easier for you. 
+# E.g. a class Tweet, and/or a class TwitterUser… Check out the data you want in your database tables to make plans for those 
+# if you choose to. Otherwise, you'll have to find some other way of handling this data
 
 
 
