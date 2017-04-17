@@ -188,17 +188,8 @@ for avalue in initialized_movie_list:
 	title = avalue.title #v for vendetta, superbad, pitch perfect
 	mytweets = get_tweets_from_term(title) #ex. tweet for "V for Vendetta"
 	for i in range(len(mytweets["statuses"])):
-		print("here 2")
 		mytweet = Tweet(mytweets["statuses"][i])
 		initialized_tweet_list.append(mytweet)
-
-for avalue in initialized_tweet_list:
-	print(avalue)
-	print(avalue.user_name)
-	print(avalue.mentions)
-	print("\n\n")
-print("What's up")
-
 
 # for avalue in initialized_movie_list:
 # 	title = avalue.title
