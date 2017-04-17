@@ -112,7 +112,7 @@ class Movie():
 		self.director = movie_response["Director"]
 		self.production = movie_response["Production"]
 		self.released = movie_response["Released"]
-		self.languages = movie_response["Language"]
+		self.languages = [avalue.strip() for avalue in movie_response["Language"].split(",")]
 		self.runtime = movie_response["Runtime"]
 		self.actors = movie_response["Actors"]
 		self.plot = movie_response["Plot"]
@@ -130,13 +130,11 @@ class Movie():
 
 	# Need another method here!
 
-test = get_movie_data("V for Vendetta")
-
+test = get_movie_data("Amélie")
+testt = Movie(test)
+print(testt.languages)
+print(type(testt.languages))
 # Class User & class Tweet
-
-test = get_tweets_from_user("lin_manuel")
-test2 = get_tweets_from_user("sydbiggs")
-test3 = get_tweets_from_term("V for Vendetta")
 
 class TwitterUser():
 	def __init__(self, twitter_response):
@@ -155,12 +153,14 @@ class Tweet():
 		self.rt = twitter_response["retweet_count"]
 		self.tweet = twitter_response["text"]
 		self.user_name = twitter_response["user"]["screen_name"]
-		# self.movie = twitter_response[]
 		self.num_favorites = twitter_response["favorite_count"]
 		self.mentions=[]
 		whereweare= twitter_response["entities"]["user_mentions"]
 		for avalue in range(len(whereweare)):
 			(self.mentions).append(whereweare[avalue]["screen_name"])
+
+	def add_title(self, movie_title):
+		self.title = movie_title
 
 # mention_list = []
 # for tweet in umich_tweets:
@@ -190,6 +190,7 @@ for avalue in initialized_movie_list:
 	mytweets = get_tweets_from_term(title)
 	for i in range(len(mytweets["statuses"])):
 		mytweet = Tweet(mytweets["statuses"][i])
+		mytweet.add_title(title)
 		initialized_tweet_list.append(mytweet)
 
 # Then, use your function to access data about a Twitter user to get information about each of the Users in the "neighborhood", 
@@ -224,29 +225,62 @@ for avalue in mentions_and_users:
 conn = sqlite3.connect('project3_tweets.db')
 cur = conn.cursor()
 
-statement = ('DROP TABLE IF EXISTS Tweets')
+#Table for Movies
+statement = ('DROP TABLE IF EXISTS Movies')
 cur.execute(statement)
 
-# Table for Tweets
 table_spec = 'CREATE TABLE IF NOT EXISTS '
-table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
-table_spec += 'text TEXT, user TEXT, movie TEXT, number_favorites INTEGER, number_retweets INTEGER)'
+table_spec += 'Movies (id INTEGER PRIMARY KEY, '
+table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMBD INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT)'
 cur.execute(table_spec)
 
-Tweet_list = []
-for i in range(len(initialized_tweet_list)):
-	tweet_id = initialized_tweet_list[i].id
-	text = initialized_tweet_list[i].tweet
-	user = initialized_tweet_list[i].user_name
-	# movie = initialized_tweet_list[i].movie
-	movie = "TEST FOR NOW"
-	number_favorites = initialized_tweet_list[i].num_favorites
-	number_retweets = initialized_tweet_list[i].rt
-	Tweet_list.append((tweet_id, text, user, movie, number_favorites, number_retweets))
+Movie_list = []
+for i in range(len(initialized_movie_list)):
+	Title = initialized_movie_list[i].title
+	Director = initialized_movie_list[i].director
+	Number_Languages = len(initialized_movie_list[i].languages)
+	IMBD_Rating = initialized_movie_list[i].ratings["Internet Movie Database"]
+	Rotton_Tomatoes_Rating = initialized_movie_list[i].ratings["Rotten Tomatoes"]
+	Main_Actor = initialized_movie_list[i].actors[0]
+	Movie_list.append((None, Title, Director, Number_Languages, IMBD_Rating, Rotton_Tomatoes_Rating, Main_Actor))
 
-statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
-for avalue in Tweet_list:
-	cur.execute(statement,avalue)
+statement = 'INSERT INTO Movies VALUES (?,?,?,?,?,?,?)'
+for avalue in Movie_list:
+	cur.execute(statement, avalue)
+
+#ALL GOOD UP UNTIL HERE
+
+# statement = ('DROP TABLE IF EXISTS Tweets')
+# cur.execute(statement)
+
+# # Table for Tweets
+# table_spec = 'CREATE TABLE IF NOT EXISTS '
+# table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
+# table_spec += 'text TEXT, user TEXT, FOREIGN KEY(Title) REFERENCES Movies(Title), number_favorites INTEGER, number_retweets INTEGER)'
+# cur.execute(table_spec)
+
+
+# # #Table for Users
+# # statement = ('DROP TABLE IF EXISTS Users')
+# # table_spec = 'CREATE TABLE IF NOT EXISTS'
+# # table_spec += 'Users (id TEXT PRIMARY KEY,'
+# # table_spec += 'Screen_name as TEXT, '
+
+# Tweet_list = []
+# for i in range(len(initialized_tweet_list)):
+# 	tweet_id = initialized_tweet_list[i].id
+# 	text = initialized_tweet_list[i].tweet
+# 	user = initialized_tweet_list[i].user_name
+# 	Title = initialized_tweet_list[i].movie
+# 	number_favorites = initialized_tweet_list[i].num_favorites
+# 	number_retweets = initialized_tweet_list[i].rt
+# 	Tweet_list.append((tweet_id, text, user, Title, number_favorites, number_retweets))
+
+
+
+# statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
+# for avalue in Tweet_list:
+# 	cur.execute(statement,avalue)
 
 conn.commit()
 
