@@ -138,7 +138,7 @@ test = get_tweets_from_user("lin_manuel")
 test2 = get_tweets_from_user("sydbiggs")
 test3 = get_tweets_from_term("V for Vendetta")
 
-class User():
+class TwitterUser():
 	def __init__(self, twitter_response):
 		self.id = twitter_response["id"]
 		self.name = twitter_response["name"]
@@ -150,11 +150,11 @@ class User():
 
 class Tweet():
 	def __init__(self, twitter_response):
+		self.id = twitter_response["id"]
 		self.time = twitter_response["created_at"]
 		self.rt = twitter_response["retweet_count"]
 		self.tweet = twitter_response["text"]
-		self.user_name = twitter_response["user"]["name"] #person who tweeted the tweet
-
+		self.user_name = twitter_response["user"]["screen_name"]
 		self.mentions=[]
 		whereweare= twitter_response["entities"]["user_mentions"]
 		for avalue in range(len(whereweare)):
@@ -178,53 +178,58 @@ movie_list = [movie1, movie2, movie3]
 
 initialized_movie_list = [Movie(get_movie_data(avalue)) for avalue in movie_list]
 
+# Make invocations to your Twitter functions
+# Use Twitter search function to search for the titles of each of those three movies
+# List of instances of class Tweet:
 
-# Make invocations to your Twitter functions.
-# Use Twitter search function to search for the titles of each of those three movies. Make a list of instances of class tweet 
-#(tweet dictionaries, or tweet info tuples)
-# print(get_tweets_from_term("V for Vendetta")) #statuses
 initialized_tweet_list = []
 for avalue in initialized_movie_list: 
-	title = avalue.title #v for vendetta, superbad, pitch perfect
-	mytweets = get_tweets_from_term(title) #ex. tweet for "V for Vendetta"
+	title = avalue.title
+	mytweets = get_tweets_from_term(title)
 	for i in range(len(mytweets["statuses"])):
 		mytweet = Tweet(mytweets["statuses"][i])
 		initialized_tweet_list.append(mytweet)
 
-# for avalue in initialized_movie_list:
-# 	title = avalue.title
-# 	mytweet = get_tweets_from_term(title) #tweet for V for Vendetta
-# 	# mytweet_class = Tweet(mytweet)
-# 	print(type(mytweet))
-# 	# initialized_tweet_list.append(mytweet_class)
-
-# tweets_list = [Tweet(get_tweets_from_term(avalue)) for avalue in movie_list]
-
-# for avalue in tweets_list:
-# 	print(avalue)
-# 	print(avalue.user_name)
-# 	print(avalue.mentions)
-# 	print("\n\n")
-
-
 # Then, use your function to access data about a Twitter user to get information about each of the Users in the "neighborhood", 
-# as it's called in social network studies -- every user who posted any of the tweets you retrieved and every user who is mentioned in them.
-# It may be useful to have a class TwitterUser for this reason, as you can then create lists of user instances instead of lists of 
-# dictionaries! But you can manage the data in dictionaries as well, if you like. 
-# Save either a resulting list of instances of your class TwitterUser or a list of User-representative dictionaries in a variable.
-# Make sure your code accesses the whole neighborhood -- every tweet poster and 
+# as it's called in social network studies -- every user who posted any of the tweets you retrieved and every user who is mentioned in them
+
+mentions_and_users = []
+for avalue in initialized_tweet_list:
+	mentions_and_users.append(avalue.user_name)
+	for auser in avalue.mentions:
+		mentions_and_users.append(auser)
+
+# Save a resulting list of instances of class TwitterUser
+initialized_TwitterUsers = []
+for avalue in mentions_and_users:
+	temp_user = get_tweets_from_user(avalue)
+	initialized_TwitterUsers.append(TwitterUser(temp_user))
 
 
+# Create a database file with 3 tables:
+# A Tweets table
+# A Users table (for Twitter users)
+# A Movies table
 
+# Your Tweets table should hold in each row:
+# Tweet text
+# Tweet ID (primary key)
+# The user who posted the tweet (represented by a reference to the users table)
+# The movie search this tweet came from (represented by a reference to the movies table)
+# Number favorites
+# Number retweets
 
+conn = sqlite3.connect('project3_tweets.db')
+cur = conn.cursor()
 
+statement = ('DROP TABLE IF EXISTS Tweets')
+cur.execute(statement)
 
-
-
-
-
-
-
+# Table for Tweets
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
+table_spec += 'text TEXT, user TEXT, time_posted TIMESTAMP, retweets INTEGER)'
+cur.execute(table_spec)
 
 
 
