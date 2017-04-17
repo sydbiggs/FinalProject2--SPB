@@ -114,7 +114,8 @@ class Movie():
 		self.released = movie_response["Released"]
 		self.languages = [avalue.strip() for avalue in movie_response["Language"].split(",")]
 		self.runtime = movie_response["Runtime"]
-		self.actors = movie_response["Actors"]
+		self.actors = [avalue.strip() for avalue in movie_response["Actors"].split(",")]
+		# self.actors = movie_response["Actors"]
 		self.plot = movie_response["Plot"]
 		self.genre = movie_response["Genre"]
 		self.website = movie_response["Website"]
@@ -192,6 +193,9 @@ for avalue in initialized_movie_list:
 		mytweet = Tweet(mytweets["statuses"][i])
 		mytweet.add_title(title)
 		initialized_tweet_list.append(mytweet)
+print("initialized TWEET LIST TEST HERE")
+for avalue in initialized_tweet_list:
+	print(avalue.title)
 
 # Then, use your function to access data about a Twitter user to get information about each of the Users in the "neighborhood", 
 # as it's called in social network studies -- every user who posted any of the tweets you retrieved and every user who is mentioned in them
@@ -228,15 +232,27 @@ cur = conn.cursor()
 #Table for Movies
 statement = ('DROP TABLE IF EXISTS Movies')
 cur.execute(statement)
+statement = ('DROP TABLE IF EXISTS Tweets')
+cur.execute(statement)
 
+# Table for Movies
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Movies (id INTEGER PRIMARY KEY, '
 table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMBD INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT)'
 cur.execute(table_spec)
 
+# Table for Tweets
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Tweets(tweet_id TEXT PRIMARY KEY, '
+# table_spec += 'Tweet TEXT, User TEXT, Movie_Title TEXT, FOREIGN KEY(Movie_Title) REFERENCES Movies(Title), Num_Favorites INTEGER, number_retweets INTEGER)'
+table_spec += 'Tweet TEXT, User TEXT, Movie_Title TEXT, Num_Favorites INTEGER, number_retweets INTEGER)'
+cur.execute(table_spec)
+
 Movie_list = []
 for i in range(len(initialized_movie_list)):
 	Title = initialized_movie_list[i].title
+	print(Title)
+	print(initialized_movie_list[i].title)
 	Director = initialized_movie_list[i].director
 	Number_Languages = len(initialized_movie_list[i].languages)
 	IMBD_Rating = initialized_movie_list[i].ratings["Internet Movie Database"]
@@ -250,37 +266,22 @@ for avalue in Movie_list:
 
 #ALL GOOD UP UNTIL HERE
 
-# statement = ('DROP TABLE IF EXISTS Tweets')
-# cur.execute(statement)
+# You need only put in that column a reference to whatever the primary key for the users table is 
+# (so whatever type that is, that's the type this column should be)
 
-# # Table for Tweets
-# table_spec = 'CREATE TABLE IF NOT EXISTS '
-# table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
-# table_spec += 'text TEXT, user TEXT, FOREIGN KEY(Title) REFERENCES Movies(Title), number_favorites INTEGER, number_retweets INTEGER)'
-# cur.execute(table_spec)
+Tweet_list = []
+for i in range(len(initialized_tweet_list)):
+	tweet_id = initialized_tweet_list[i].id
+	text = initialized_tweet_list[i].tweet
+	user = initialized_tweet_list[i].user_name
+	movie_title = initialized_tweet_list[i].title
+	number_favorites = initialized_tweet_list[i].num_favorites
+	number_retweets = initialized_tweet_list[i].rt
+	Tweet_list.append((tweet_id, text, user, movie_title, number_favorites, number_retweets))
 
-
-# # #Table for Users
-# # statement = ('DROP TABLE IF EXISTS Users')
-# # table_spec = 'CREATE TABLE IF NOT EXISTS'
-# # table_spec += 'Users (id TEXT PRIMARY KEY,'
-# # table_spec += 'Screen_name as TEXT, '
-
-# Tweet_list = []
-# for i in range(len(initialized_tweet_list)):
-# 	tweet_id = initialized_tweet_list[i].id
-# 	text = initialized_tweet_list[i].tweet
-# 	user = initialized_tweet_list[i].user_name
-# 	Title = initialized_tweet_list[i].movie
-# 	number_favorites = initialized_tweet_list[i].num_favorites
-# 	number_retweets = initialized_tweet_list[i].rt
-# 	Tweet_list.append((tweet_id, text, user, Title, number_favorites, number_retweets))
-
-
-
-# statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
-# for avalue in Tweet_list:
-# 	cur.execute(statement,avalue)
+statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
+for avalue in Tweet_list:
+	cur.execute(statement,avalue)
 
 conn.commit()
 
