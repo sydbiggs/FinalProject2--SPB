@@ -64,7 +64,6 @@ def get_tweets_from_term(searchterm):
 	return(twitter_results)
 
 # A function to get and cache data about a Twitter user
-
 def get_tweets_from_user(twitter_handle):
 	unique_identifier = twitter_handle
 	if unique_identifier in CACHE_DICTION_U:
@@ -100,19 +99,13 @@ def get_movie_data(movie_title):
 		f.close()
 	return(results)
 
-# Class Movie
-# Its title
-# Its director
-# Its IMDB rating
-# A list of its actors (check out the data and consider how to get a list of strings that represent actor names!)
-# The number of languages in the movie
 class Movie():
 	def __init__(self, movie_response): #where movie_response = dictionary with info about a movie
 		self.title = movie_response["Title"]
 		self.director = movie_response["Director"]
 		self.production = movie_response["Production"]
 		self.released = movie_response["Released"]
-		self.languages = [avalue.strip() for avalue in movie_response["Language"].split(",")]
+		self.num_languages = len([avalue.strip() for avalue in movie_response["Language"].split(",")])
 		self.runtime = movie_response["Runtime"]
 		self.actors = [avalue.strip() for avalue in movie_response["Actors"].split(",")]
 		# self.actors = movie_response["Actors"]
@@ -139,13 +132,14 @@ print(type(testt.languages))
 
 class TwitterUser():
 	def __init__(self, twitter_response):
-		self.id = twitter_response["id"]
+		self.user_id = twitter_response["id"]
 		self.name = twitter_response["name"]
 		self.handle = twitter_response["screen_name"]
 		self.description = twitter_response["description"]
 		self.num_tweets = twitter_response["statuses_count"]
 		self.followers = twitter_response["followers_count"]
 		self.following = twitter_response["friends_count"]
+		self.num_favorites = twitter_response["favourites_count"]
 
 class Tweet():
 	def __init__(self, twitter_response):
@@ -214,22 +208,10 @@ for avalue in mentions_and_users:
 
 
 # Create a database file with 3 tables:
-# A Tweets table
-# A Users table (for Twitter users)
-# A Movies table
-
-# Your Tweets table should hold in each row:
-# Tweet text
-# Tweet ID (primary key)
-# The user who posted the tweet (represented by a reference to the users table)
-# The movie search this tweet came from (represented by a reference to the movies table)
-# Number favorites
-# Number retweets
 
 conn = sqlite3.connect('project3_tweets.db')
 cur = conn.cursor()
 
-#Table for Movies
 statement = ('DROP TABLE IF EXISTS Movies')
 cur.execute(statement)
 statement = ('DROP TABLE IF EXISTS Tweets')
@@ -248,13 +230,17 @@ table_spec += 'Tweets(tweet_id TEXT PRIMARY KEY, '
 table_spec += 'Tweet TEXT, User TEXT, Movie_Title TEXT, Num_Favorites INTEGER, number_retweets INTEGER)'
 cur.execute(table_spec)
 
+#Table for Users
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'User(user_id TEXT PRIMARY KEY, '
+table_spec += 'screen_name TEXT, num_favorites TEXT, name TEXT, description TEXT)'
+cur.execute(table_spec)
+
 Movie_list = []
 for i in range(len(initialized_movie_list)):
 	Title = initialized_movie_list[i].title
-	print(Title)
-	print(initialized_movie_list[i].title)
 	Director = initialized_movie_list[i].director
-	Number_Languages = len(initialized_movie_list[i].languages)
+	Number_Languages = initialized_movie_list[i].num_languages
 	IMBD_Rating = initialized_movie_list[i].ratings["Internet Movie Database"]
 	Rotton_Tomatoes_Rating = initialized_movie_list[i].ratings["Rotten Tomatoes"]
 	Main_Actor = initialized_movie_list[i].actors[0]
@@ -263,11 +249,6 @@ for i in range(len(initialized_movie_list)):
 statement = 'INSERT INTO Movies VALUES (?,?,?,?,?,?,?)'
 for avalue in Movie_list:
 	cur.execute(statement, avalue)
-
-#ALL GOOD UP UNTIL HERE
-
-# You need only put in that column a reference to whatever the primary key for the users table is 
-# (so whatever type that is, that's the type this column should be)
 
 Tweet_list = []
 for i in range(len(initialized_tweet_list)):
@@ -283,11 +264,25 @@ statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
 for avalue in Tweet_list:
 	cur.execute(statement,avalue)
 
+
+User_list = []
+for i in range(len(initialized_TwitterUsers)):
+	user_id = initialized_TwitterUsers[i].user_id
+	screen_name = initialized_TwitterUsers[i].screen_name
+	num_favorites = initialized_TwitterUsers[i].num_favorites
+	User_list.append((user_id, screen_name, num_favorites))
+
+statement = 'INSERT INTO Tweets VALUES (?,?,?,?)'
+for avalue in User_list:
+	cur.execute(statement, avalue)
+
+
 conn.commit()
 
 
 
-
+# You need only put in that column a reference to whatever the primary key for the users table is 
+# (so whatever type that is, that's the type this column should be)
 
 
 
