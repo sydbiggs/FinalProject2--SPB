@@ -6,7 +6,7 @@ import tweepy
 from bs4 import BeautifulSoup
 import re
 import twitter_info
-
+import sqlite3
 
 #Twitter info:
 consumer_key = twitter_info.consumer_key
@@ -155,6 +155,8 @@ class Tweet():
 		self.rt = twitter_response["retweet_count"]
 		self.tweet = twitter_response["text"]
 		self.user_name = twitter_response["user"]["screen_name"]
+		# self.movie = twitter_response[]
+		self.num_favorites = twitter_response["favorite_count"]
 		self.mentions=[]
 		whereweare= twitter_response["entities"]["user_mentions"]
 		for avalue in range(len(whereweare)):
@@ -228,9 +230,25 @@ cur.execute(statement)
 # Table for Tweets
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
-table_spec += 'text TEXT, user TEXT, time_posted TIMESTAMP, retweets INTEGER)'
+table_spec += 'text TEXT, user TEXT, movie TEXT, number_favorites INTEGER, number_retweets INTEGER)'
 cur.execute(table_spec)
 
+Tweet_list = []
+for i in range(len(initialized_tweet_list)):
+	tweet_id = initialized_tweet_list[i].id
+	text = initialized_tweet_list[i].tweet
+	user = initialized_tweet_list[i].user_name
+	# movie = initialized_tweet_list[i].movie
+	movie = "TEST FOR NOW"
+	number_favorites = initialized_tweet_list[i].num_favorites
+	number_retweets = initialized_tweet_list[i].rt
+	Tweet_list.append((tweet_id, text, user, movie, number_favorites, number_retweets))
+
+statement = 'INSERT INTO Tweets VALUES (?,?,?,?,?,?)'
+for avalue in Tweet_list:
+	cur.execute(statement,avalue)
+
+conn.commit()
 
 
 
@@ -245,6 +263,9 @@ cur.execute(table_spec)
 
 
 
+
+
+conn.close()
 
 
 
