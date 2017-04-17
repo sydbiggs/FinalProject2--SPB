@@ -53,7 +53,8 @@ def get_tweets_from_user(twitter_handle):
 		twitter_results = CACHE_DICTION[unique_identifier]
 	else:
 		print("Getting data from internet for ", twitter_handle, "\n")
-		twitter_results = api.user_timeline(screen_name = twitter_handle)
+		# twitter_results = api.user_timeline(screen_name = twitter_handle)
+		twitter_results = api.get_user(screen_name = twitter_handle)
 		CACHE_DICTION[unique_identifier] = twitter_results
 		f = open(CACHE_FNAME, "w")
 		f.write(json.dumps(CACHE_DICTION))
@@ -108,15 +109,27 @@ class Movie():
 	def __str__(self):
 		return("{}".format(self.title))
 
+	# Need another method here!
 
 test = get_movie_data("V for Vendetta")
-test = Movie(test)
-print(test)
-# Optional but recommended: create a class or classes to handle the Twitter data and make it easier for you. 
-# E.g. a class Tweet, and/or a class TwitterUser… Check out the data you want in your database tables to make plans for those 
-# if you choose to. Otherwise, you'll have to find some other way of handling this data
 
+# Class User & class Tweet
 
+test = get_tweets_from_user("lin_manuel")
+test2 = get_tweets_from_user("sydbiggs")
+
+class User():
+	def __init__(self, twitter_response):
+		self.id = twitter_response["id"]
+		self.name = twitter_response["name"]
+		self.handle = twitter_respone["screen_name"]
+		self.description = twitter_response["description"]
+		self.num_tweets = twitter_response["statuses_count"]
+		self.followers = twitter_response["followers_count"]
+		self.following = twitter_response["friends_count"]
+
+class Tweet():
+	def __init__(self, twitter_response)
 
 
 
