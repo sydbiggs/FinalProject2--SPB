@@ -22,9 +22,6 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 #First, set up the three cache files:
 
 CACHE_FNAME = "206_final_project_cache.json" #Cache for OMDB info
-CACHE_FNAME_U = "206_final_project_cache_users.json" #Cache to hold User info
-CACHE_FNAME_T = "206_final_project_cache_tweets.json" #Cache to hold Tweet info
-
 try: 
 	cache_file = open(CACHE_FNAME, 'r')
 	cache_contents = cache_file.read() # pull all into one big string
@@ -33,65 +30,49 @@ try:
 except:
 	CACHE_DICTION = {}
 
-try: 
-	cache_file = open(CACHE_FNAME_U, 'r')
-	cache_contents = cache_file.read() # pull all into one big string
-	CACHE_DICTION_U = json.loads(cache_contents) # dictionary that holds all cache data  
-	cache_file.close()
-except:
-	CACHE_DICTION_U= {}
-
-try: 
-	cache_file = open(CACHE_FNAME_T, 'r')
-	cache_contents = cache_file.read() # pull all into one big string
-	CACHE_DICTION_T = json.loads(cache_contents) # dictionary that holds all cache data  
-	cache_file.close()
-except:
-	CACHE_DICTION_T= {}
-
 # A function to get and cache data based on a search term in Twitter:
 def get_tweets_from_term(searchterm):
 	unique_identifier = searchterm
-	if unique_identifier in CACHE_DICTION_T:
+	if unique_identifier in CACHE_DICTION:
 		print("Using cached data for ", searchterm, "\n")
-		twitter_results = CACHE_DICTION_T[unique_identifier]
+		twitter_results = CACHE_DICTION[unique_identifier]
 	else:
 		print("Getting data from internet for ", searchterm, "\n")
 		twitter_results = api.search(q = searchterm)
-		CACHE_DICTION_T[unique_identifier] = twitter_results
-		f = open(CACHE_FNAME_T, "w")
-		f.write(json.dumps(CACHE_DICTION_T))
+		CACHE_DICTION[unique_identifier] = twitter_results
+		f = open(CACHE_FNAME, "w")
+		f.write(json.dumps(CACHE_DICTION))
 		f.close()
 	return(twitter_results)
 
 # A function to get and cache data about a Twitter user:
 def get_tweets_from_user(twitter_handle):
 	unique_identifier = twitter_handle
-	if unique_identifier in CACHE_DICTION_U:
+	if unique_identifier in CACHE_DICTION:
 		print("Using cached data for ", twitter_handle, "\n")
-		twitter_results = CACHE_DICTION_U[unique_identifier]
+		twitter_results = CACHE_DICTION[unique_identifier]
 	else:
 		print("Getting data from internet for ", twitter_handle, "\n")
 		# twitter_results = api.user_timeline(screen_name = twitter_handle)
 		twitter_results = api.get_user(screen_name = twitter_handle)
-		CACHE_DICTION_U[unique_identifier] = twitter_results
-		f = open(CACHE_FNAME_U, "w")
-		f.write(json.dumps(CACHE_DICTION_U))
+		CACHE_DICTION[unique_identifier] = twitter_results
+		f = open(CACHE_FNAME, "w")
+		f.write(json.dumps(CACHE_DICTION))
 		f.close()
 	return(twitter_results)
 
 # A function to get and cache data from the OMDB API. User a movie title as the search term:
-def get_movie_data(movie_title):
-	unique_identifier = movie_title
+def get_movie_data(avalue):
+	unique_identifier = avalue
 	if unique_identifier in CACHE_DICTION:
-		print("Using cached data for ", movie_title, "\n")
+		print("Using cached data for ", avalue, "\n")
 		results = CACHE_DICTION[unique_identifier]
 	else:
 		baseurl = "http://www.omdbapi.com/"
 		ombd_param = {}
-		ombd_param["t"] = movie_title
+		ombd_param["t"] = avalue
 		ombd_param["type"] = "movie"
-		print("Getting data from internet for ", movie_title ,"\n")
+		print("Getting data from internet for ", avalue ,"\n")
 		response = requests.get(baseurl, ombd_param)
 		results = json.loads(response.text)
 		CACHE_DICTION[unique_identifier] = results
@@ -159,9 +140,9 @@ class Tweet():
 		self.title = movie_title
 
 # Pick at least 3 movie title search terms for OMDB. Put those strings in a list. 
-movie1 = "V for Vendetta"
-movie2 = "Superbad"
-movie3 = "Pitch Perfect"
+movie1 = "Jaws"
+movie2 = "Moonrise Kingdom"
+movie3 = "Aliens"
 movie_list = [movie1, movie2, movie3]
 
 #INVOCATIONS OF EACH FUNCTION ARE AS FOLLOWS:
@@ -176,11 +157,11 @@ initialized_movie_list = [Movie(get_movie_data(avalue)) for avalue in movie_list
 
 initialized_tweet_list = []
 for avalue in initialized_movie_list: 
-	title = avalue.title
-	mytweets = get_tweets_from_term(title)
+	dirt = avalue.director
+	mytweets = get_tweets_from_term(dirt)
 	for i in range(len(mytweets["statuses"])):
 		mytweet = Tweet(mytweets["statuses"][i])
-		mytweet.add_title(title)
+		mytweet.add_title(avalue.title)
 		initialized_tweet_list.append(mytweet)
 
 # Use your function to access data about a Twitter user to get information about each of the Users in the "neighborhood", 
@@ -219,7 +200,7 @@ cur.execute(table_spec)
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets(tweet_id TEXT PRIMARY KEY, '
 # table_spec += 'Tweet TEXT, User TEXT, Movie_Title TEXT, FOREIGN KEY(Movie_Title) REFERENCES Movies(Title), Num_Favorites INTEGER, number_retweets INTEGER)'
-table_spec += 'Tweet TEXT, user_id TEXT, screen_name TEXT, Movie_Title TEXT, Num_Favorites INTEGER, number_retweets INTEGER)'
+table_spec += 'Tweet TEXT, user_id TEXT, screen_name TEXT, Title TEXT, Num_Favorites INTEGER, number_retweets INTEGER)'
 cur.execute(table_spec)
 
 #Table for Users
@@ -281,21 +262,28 @@ for avalue in cur:
 	print(avalue)
 	joined_result.append(avalue)
 
-
 #Get the three most popular tweets + the movie they're about (put this into dictionary {Movie: Tweet})
-query = "SELECT Tweet, Movie_Title FROM Tweets WHERE number_retweets > 0"
+query = "SELECT Title, Tweet FROM Tweets WHERE number_retweets > 100"
 cur.execute(query)
-popular_tweets = []
-for avalue in cur:
-	popular_tweets.append(avalue)
+popular_tweets = [avalue for avalue in cur]
 
+# What movies have the most tweets about them?
+popular_tweets_dict = {avalue[0]: avalue[1] for avalue in popular_tweets}
+print(popular_tweets_dict)
 
-
+#
+query = "SELECT Director FROM Movies INNER JOIN Tweets on Movies.Title"
+cur.execute(query)
 
 
 
 
 conn.close()
+
+# PROCESS THE DATA AND CREATE AN OUTPUT FILE!
+
+
+
 
 
 
@@ -363,12 +351,5 @@ class Test_Tweet_Class(unittest.TestCase):
 		testtweet.add_title("Not a real movie")
 		self.assertEqual(testtweet.title, "Not a real movie")
 
-
-
-
-
 if __name__ == "__main__":
 	unittest.main(verbosity=2)
-
-
-
