@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import re
 import twitter_info
 import sqlite3
+import collections
 
 #Twitter info:
 consumer_key = twitter_info.consumer_key
@@ -193,7 +194,7 @@ cur.execute(statement)
 # Table for Movies
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Movies (id INTEGER PRIMARY KEY, '
-table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMBD INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT)'
+table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMDB INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT)'
 cur.execute(table_spec)
 
 # Table for Tweets
@@ -216,10 +217,11 @@ for i in range(len(initialized_movie_list)):
 	Title = initialized_movie_list[i].title
 	Director = initialized_movie_list[i].director
 	Number_Languages = initialized_movie_list[i].num_languages
-	IMBD_Rating = initialized_movie_list[i].ratings["Internet Movie Database"]
-	Rotton_Tomatoes_Rating = initialized_movie_list[i].ratings["Rotten Tomatoes"]
+	IMDB_Rating = initialized_movie_list[i].ratings["Internet Movie Database"]
+	Rotton_Tomatoes_Rating_perc = initialized_movie_list[i].ratings["Rotten Tomatoes"]
+	Rotton_Tomatoes_Rating = Rotton_Tomatoes_Rating_perc[:(len(Rotton_Tomatoes_Rating_perc)-1)]
 	Main_Actor = initialized_movie_list[i].actors[0]
-	Movie_list.append((None, Title, Director, Number_Languages, IMBD_Rating, Rotton_Tomatoes_Rating, Main_Actor))
+	Movie_list.append((None, Title, Director, Number_Languages, IMDB_Rating, Rotton_Tomatoes_Rating, Main_Actor))
 
 statement = 'INSERT INTO Movies VALUES (?,?,?,?,?,?,?)'
 for avalue in Movie_list:
@@ -252,41 +254,58 @@ for i in range(len(initialized_TwitterUsers)):
 	cur.execute(statement, (user_id, screen_name, num_favorites, name, description, location))
 conn.commit()
 
-## QUERIES
+## THREE+ QUERIES TO THE DATABASES:
 
-## Get the most popular locations
-query = "SELECT Users.location FROM Users INNER JOIN Tweets ON Users.user_id WHERE number_retweets > 100"
+## Get the most popular locations for each movie to be tweeted about
+query = "SELECT Tweets.title,Users.location FROM Users INNER JOIN Tweets ON Users.user_id WHERE number_retweets > 100"
 cur.execute(query)
-joined_result = []
-for avalue in cur:
-	print(avalue)
-	joined_result.append(avalue)
+loc_list = [avalue for avalue in cur]
 
-#Get the three most popular tweets + the movie they're about (put this into dictionary {Movie: Tweet})
+#Get tweets about movies that have been retweeted more than 100 times
 query = "SELECT Title, Tweet FROM Tweets WHERE number_retweets > 100"
 cur.execute(query)
 popular_tweets = [avalue for avalue in cur]
 
-# What movies have the most tweets about them?
-popular_tweets_dict = {avalue[0]: avalue[1] for avalue in popular_tweets}
-print(popular_tweets_dict)
-
-#
-query = "SELECT Director FROM Movies INNER JOIN Tweets on Movies.Title"
+# Get movies with a very high IMDB score
+query = "SELECT Title, IMDB FROM Movies WHERE Rotton_Tomatoes > 90"
 cur.execute(query)
-
-
-
+great_scores_movies = [avalue for avalue in cur]
 
 conn.close()
 
 # PROCESS THE DATA AND CREATE AN OUTPUT FILE!
 
+# (1) What movies have the most tweets about them?
+popular_tweets_dict = {avalue[0]: avalue[1] for avalue in popular_tweets}
+
+# (2) Use counter to count the number of locations for each movie-- i.e. find the most common time zone for each movie
+loc_dict = {}
+for avalue in loc_list:
+	temp_title = avalue[0]
+	temp_location = avalue[1]
+	if temp_location == None:
+		pass
+	elif temp_title not in loc_dict:
+		loc_dict[temp_title] = [temp_location]
+	else:
+		loc_dict[temp_title].append(temp_location)
+
+count_jaws = collections.Counter(loc_dict["Jaws"]).most_common(1)
+print(count_jaws)
+count_MR = collections.Counter(loc_dict["Moonrise Kingdom"]).most_common(1)
+print(count_MR)
+count_aliens = collections.Counter(loc_dict["Aliens"]).most_common(1)
+print(count_aliens)
 
 
+## THAT IS IT FOR NOW. I still need to process more data and create the output file
 
-
-
+# Using iteration methods from the itertools library
+# Accumulation in dictionaries and processing of the data (e.g. counts, lists associated with keys… like umsi_titles, but of course something different)
+# Using generator expressions and/or generator functions (recall HW6)
+# Sorting with a key parameter
+# Using the builtins: map or filter (which each return iterators) in order to filter a sequence or transform a sequence of data
+# Using regular expressions
 
 
 
