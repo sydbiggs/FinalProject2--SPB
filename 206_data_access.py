@@ -303,18 +303,22 @@ for avalue in loc_list:
 	else:
 		loc_dict[temp_title].append(temp_location)
 
-count_jaws = collections.Counter(loc_dict[movie1]).most_common(1)
+count_jaws = (collections.Counter(loc_dict[movie1]).most_common(1))[0][0]
 print(count_jaws)
-count_MR = collections.Counter(loc_dict[movie2]).most_common(1)
+count_MR = collections.Counter(loc_dict[movie2]).most_common(1)[0][0]
 print(count_MR)
-count_aliens = collections.Counter(loc_dict[movie3]).most_common(1)
+count_aliens = collections.Counter(loc_dict[movie3]).most_common(1)[0][0]
 print(count_aliens)
 
 ## (2) From the tweets that have been retweeted more than 100 times, return the shortest one using SORTED method
 
 def shortest_popular_tweet(alist, amovie):
 	pop_list = [avalue[1] for avalue in alist if avalue[0] == amovie]
-	sorted_list = sorted(sorted(pop_list), key = lambda x: len(x), reverse = False)
+	temp = []
+	for avalue in pop_list:
+		new = avalue.replace(',', '')
+		temp.append(new)
+	sorted_list = sorted(sorted(temp), key = lambda x: len(x), reverse = False)
 	return(sorted_list[0])
 
 popular_jaws = shortest_popular_tweet(popular_tweets, movie1)
@@ -323,7 +327,14 @@ popular_aliens = shortest_popular_tweet(popular_tweets, movie3)
 
 
 # (3) Use dictionary comprehension to make dict of movie and it's plot
-title_to_plot_dict = {avalue[0]: avalue[1] for avalue in Title_Plot} 
+
+#first, remove commas from the movies plot (we can't write to a CSV file when there are commas)
+new_title_plot = []
+for avalue in Title_Plot:
+	new = avalue[1].replace(',', '')
+	new_title_plot.append((avalue[0], new))
+
+title_to_plot_dict = {avalue[0]: avalue[1] for avalue in new_title_plot} 
 
 # (4) Use regrex to get every IMDB score as a number, not a TEXT
 def get_imdb_score(imdb_score):
@@ -352,7 +363,7 @@ outfile = open(final_file, "w")
 outfile.write("Title, Most popular tweet location, Shortest popular tweet, movie plot, IMDB score (out of 10)\n")
 titles = [movie1, movie2, movie3]
 loc = [count_jaws, count_MR, count_aliens]
-pop = [popular_jaws[1], popular_MK[1], popular_aliens[1]]
+pop = [popular_jaws, popular_MK, popular_aliens]
 plt = [title_to_plot_dict[movie1], title_to_plot_dict[movie2], title_to_plot_dict[movie3]]
 imdb = [IMDB_jaws, IMDB_MK, IMDB_aliens]
 for i in range(len(titles)):
