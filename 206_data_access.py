@@ -194,7 +194,7 @@ cur.execute(statement)
 # Table for Movies
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Movies (id INTEGER PRIMARY KEY, '
-table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMDB INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT)'
+table_spec += 'Title TEXT, Director TEXT, Num_Languages INTEGER, IMDB INTEGER, Rotton_Tomatoes INTEGER, Main_Actor TEXT, plot TEXT)'
 cur.execute(table_spec)
 
 # Table for Tweets
@@ -221,9 +221,10 @@ for i in range(len(initialized_movie_list)):
 	Rotton_Tomatoes_Rating_perc = initialized_movie_list[i].ratings["Rotten Tomatoes"]
 	Rotton_Tomatoes_Rating = Rotton_Tomatoes_Rating_perc[:(len(Rotton_Tomatoes_Rating_perc)-1)]
 	Main_Actor = initialized_movie_list[i].actors[0]
-	Movie_list.append((None, Title, Director, Number_Languages, IMDB_Rating, Rotton_Tomatoes_Rating, Main_Actor))
+	plot = initialized_movie_list[i].plot
+	Movie_list.append((None, Title, Director, Number_Languages, IMDB_Rating, Rotton_Tomatoes_Rating, Main_Actor, plot))
 
-statement = 'INSERT INTO Movies VALUES (?,?,?,?,?,?,?)'
+statement = 'INSERT INTO Movies VALUES (?,?,?,?,?,?,?,?)'
 for avalue in Movie_list:
 	cur.execute(statement, avalue)
 
@@ -256,7 +257,7 @@ conn.commit()
 
 ## THREE+ QUERIES TO THE DATABASES:
 
-## Get the most popular locations for each movie to be tweeted about
+## Get the most popular locations for each movie to be tweeted about for tweets that actually have some relevance (i.e. rt > 100)
 query = "SELECT Tweets.title,Users.location FROM Users INNER JOIN Tweets ON Users.user_id WHERE number_retweets > 100"
 cur.execute(query)
 loc_list = [avalue for avalue in cur]
@@ -270,15 +271,27 @@ popular_tweets = [avalue for avalue in cur]
 query = "SELECT Title, IMDB FROM Movies WHERE Rotton_Tomatoes > 90"
 cur.execute(query)
 great_scores_movies = [avalue for avalue in cur]
+# for avalue in great_scores_movies:
+# 	print(avalue)
 
+# Get user descriptions and movie descriptions and see what words they have in common
+query = "SELECT Tweets.Title, Tweets.Tweet, Users.description FROM Tweets INNER JOIN Users ON Users.user_id"
+cur.execute(query)
+description_list = [avalue for avalue in cur]
+# for avalue in description_list:
+# 	print(avalue)
+
+# Get movie plot
+query = "SELECT Title, plot from Movies"
+cur.execute(query)
+Title_Plot = [avalue for avalue in cur]
 conn.close()
 
 # PROCESS THE DATA AND CREATE AN OUTPUT FILE!
 
-# (1) What movies have the most tweets about them?
-popular_tweets_dict = {avalue[0]: avalue[1] for avalue in popular_tweets}
+## (1) Use counter to count the number of locations for each movie-- i.e. find the most common time zone for each movie
+# COUNTER
 
-# (2) Use counter to count the number of locations for each movie-- i.e. find the most common time zone for each movie
 loc_dict = {}
 for avalue in loc_list:
 	temp_title = avalue[0]
@@ -290,85 +303,130 @@ for avalue in loc_list:
 	else:
 		loc_dict[temp_title].append(temp_location)
 
-count_jaws = collections.Counter(loc_dict["Jaws"]).most_common(1)
+count_jaws = collections.Counter(loc_dict[movie1]).most_common(1)
 print(count_jaws)
-count_MR = collections.Counter(loc_dict["Moonrise Kingdom"]).most_common(1)
+count_MR = collections.Counter(loc_dict[movie2]).most_common(1)
 print(count_MR)
-count_aliens = collections.Counter(loc_dict["Aliens"]).most_common(1)
+count_aliens = collections.Counter(loc_dict[movie3]).most_common(1)
 print(count_aliens)
 
+## (2) From the tweets that have been retweeted more than 100 times, return the shortest one using SORTED method
 
-## THAT IS IT FOR NOW. I still need to process more data and create the output file
+def shortest_popular_tweet(alist, amovie):
+	pop_list = [avalue[1] for avalue in alist if avalue[0] == amovie]
+	sorted_list = sorted(sorted(pop_list), key = lambda x: len(x), reverse = False)
+	return(sorted_list[0])
 
-# Using iteration methods from the itertools library
-# Accumulation in dictionaries and processing of the data (e.g. counts, lists associated with keys… like umsi_titles, but of course something different)
-# Using generator expressions and/or generator functions (recall HW6)
-# Sorting with a key parameter
-# Using the builtins: map or filter (which each return iterators) in order to filter a sequence or transform a sequence of data
-# Using regular expressions
-
-
+popular_jaws = shortest_popular_tweet(popular_tweets, movie1)
+popular_MK = shortest_popular_tweet(popular_tweets, movie2)
+popular_aliens = shortest_popular_tweet(popular_tweets, movie3)
 
 
-######################### TESTS #########################
-class Test_Project_Functions(unittest.TestCase):
-	def test_get_tweets_from_term_type(self):
-		self.assertEqual(type(get_tweets_from_term("V for Vendetta")), type({}))
-	def test_get_tweets_from_user_type(self):
-		self.assertEqual(type(get_tweets_from_user("sydbiggs")), type({}))
-	def test_get_movie_data_type(self):
-		self.assertEqual(type(get_movie_data("Pitch Perfect")), type({}))
+# (3) Use dictionary comprehension to make dict of movie and it's plot
+title_to_plot_dict = {avalue[0]: avalue[1] for avalue in Title_Plot} 
 
-class Test_Movie_Class(unittest.TestCase):
-	def test_Movie_title(self):
-		mymovie = get_movie_data("The Avengers")
-		testmovie = Movie(mymovie)
-		self.assertEqual(testmovie.title, "The Avengers")
-	def test_Movie_director(self):
-		mymovie = get_movie_data("The Avengers")
-		testmovie = Movie(mymovie)
-		self.assertEqual(testmovie.director, "Joss Whedon")
-	def test_Movie_string(self):
-		mymovie = get_movie_data("The Avengers")
-		testmovie = Movie(mymovie)
-		self.assertEqual(testmovie.__str__(), "The Avengers")
-	def test_Movie_ratings_type(self):
-		mymovie = get_movie_data("The Avengers")
-		testmovie = Movie(mymovie)
-		self.assertEqual(type(testmovie.ratings),type({}))
+# (4) Use regrex to get every IMDB score as a number, not a TEXT
+def get_imdb_score(imdb_score):
+	regex = r".+?(?=/)"
+	score = re.findall(regex, imdb_score)
+	return(score[0])
 
-class Test_TwitterUser_Class(unittest.TestCase):
-	def test_TwitterUser_screen_name(self):
-		myuser = get_tweets_from_user("Lin_Manuel")
-		testuser = TwitterUser(myuser)
-		self.assertEqual(testuser.screen_name, "Lin_Manuel")
-	def test_TwitterUser_description_type(self):
-		myuser = get_tweets_from_user("Lin_Manuel")
-		testuser = TwitterUser(myuser)
-		self.assertEqual(type(testuser.description), type("the OG"))
-	def test_TwitterUser_numtweets_type(self):
-		myuser = get_tweets_from_user("lin_manuel")
-		testuser = TwitterUser(myuser)
-		self.assertEqual(type(testuser.num_tweets), type(4))
+IMDB_jaws = get_imdb_score(great_scores_movies[0][1])
+IMDB_MK = get_imdb_score(great_scores_movies[1][1])
+IMDB_aliens = get_imdb_score(great_scores_movies[2][1])
 
-class Test_Tweet_Class(unittest.TestCase):
-	def test_Tweet_id_type(self):
-		mytweet = get_tweets_from_term("popsicle")
-		testtweet = Tweet(mytweet["statuses"][0])
-		self.assertEqual(type(testtweet.id), type(4))
-	def test_Tweet_mentions_type(self):
-		mytweet = get_tweets_from_term("popsicle")
-		testtweet = Tweet(mytweet["statuses"][0])
-		self.assertEqual(type(testtweet.mentions), type([]))
-	def test_Tweet_num_favorites_type(self):
-		mytweet = get_tweets_from_term("popsicle")
-		testtweet = Tweet(mytweet["statuses"][0])
-		self.assertEqual(type(testtweet.num_favorites), type(4))
-	def test_add_title(self):
-		mytweet = get_tweets_from_term("popsicle")
-		testtweet = Tweet(mytweet["statuses"][0])
-		testtweet.add_title("Not a real movie")
-		self.assertEqual(testtweet.title, "Not a real movie")
+# (4) Use MAPPING to MAKE EVERY rotton tomatoe score out of 10
 
-if __name__ == "__main__":
-	unittest.main(verbosity=2)
+# (5) Get the most common words in the plot
+# COUNTER
+# count_plot_words = {}
+# for avalue in Title_Plot:
+# 	title = avalue[0]
+# 	plot_words = collections.Counter(avalue[1]).most_common(1)
+# 	count_plot_words[title] = plot_words
+
+
+##### WRITE TO FILE ########
+final_file = "206_Final_Project_Bigelow.csv"
+outfile = open(final_file, "w")
+outfile.write("Title, Most popular tweet location, Shortest popular tweet, movie plot, IMDB score (out of 10)\n")
+titles = [movie1, movie2, movie3]
+loc = [count_jaws, count_MR, count_aliens]
+pop = [popular_jaws[1], popular_MK[1], popular_aliens[1]]
+plt = [title_to_plot_dict[movie1], title_to_plot_dict[movie2], title_to_plot_dict[movie3]]
+imdb = [IMDB_jaws, IMDB_MK, IMDB_aliens]
+for i in range(len(titles)):
+	first = titles[i]
+	second = loc[i]
+	third = pop[i]
+	fourth = plt[i]
+	fifth = imdb[i]
+	try:
+		outfile.write(str(first)  + "," + str(second) + "," + str(third) + "," + str(fourth) + "," + str(fifth) + "\n")
+	except:
+		print("Oops, something went wrong")
+outfile.close()
+
+
+# ######################### TESTS #########################
+# class Test_Project_Functions(unittest.TestCase):
+# 	def test_get_tweets_from_term_type(self):
+# 		self.assertEqual(type(get_tweets_from_term("V for Vendetta")), type({}))
+# 	def test_get_tweets_from_user_type(self):
+# 		self.assertEqual(type(get_tweets_from_user("sydbiggs")), type({}))
+# 	def test_get_movie_data_type(self):
+# 		self.assertEqual(type(get_movie_data("Pitch Perfect")), type({}))
+
+# class Test_Movie_Class(unittest.TestCase):
+# 	def test_Movie_title(self):
+# 		mymovie = get_movie_data("The Avengers")
+# 		testmovie = Movie(mymovie)
+# 		self.assertEqual(testmovie.title, "The Avengers")
+# 	def test_Movie_director(self):
+# 		mymovie = get_movie_data("The Avengers")
+# 		testmovie = Movie(mymovie)
+# 		self.assertEqual(testmovie.director, "Joss Whedon")
+# 	def test_Movie_string(self):
+# 		mymovie = get_movie_data("The Avengers")
+# 		testmovie = Movie(mymovie)
+# 		self.assertEqual(testmovie.__str__(), "The Avengers")
+# 	def test_Movie_ratings_type(self):
+# 		mymovie = get_movie_data("The Avengers")
+# 		testmovie = Movie(mymovie)
+# 		self.assertEqual(type(testmovie.ratings),type({}))
+
+# class Test_TwitterUser_Class(unittest.TestCase):
+# 	def test_TwitterUser_screen_name(self):
+# 		myuser = get_tweets_from_user("Lin_Manuel")
+# 		testuser = TwitterUser(myuser)
+# 		self.assertEqual(testuser.screen_name, "Lin_Manuel")
+# 	def test_TwitterUser_description_type(self):
+# 		myuser = get_tweets_from_user("Lin_Manuel")
+# 		testuser = TwitterUser(myuser)
+# 		self.assertEqual(type(testuser.description), type("the OG"))
+# 	def test_TwitterUser_numtweets_type(self):
+# 		myuser = get_tweets_from_user("lin_manuel")
+# 		testuser = TwitterUser(myuser)
+# 		self.assertEqual(type(testuser.num_tweets), type(4))
+
+# class Test_Tweet_Class(unittest.TestCase):
+# 	def test_Tweet_id_type(self):
+# 		mytweet = get_tweets_from_term("popsicle")
+# 		testtweet = Tweet(mytweet["statuses"][0])
+# 		self.assertEqual(type(testtweet.id), type(4))
+# 	def test_Tweet_mentions_type(self):
+# 		mytweet = get_tweets_from_term("popsicle")
+# 		testtweet = Tweet(mytweet["statuses"][0])
+# 		self.assertEqual(type(testtweet.mentions), type([]))
+# 	def test_Tweet_num_favorites_type(self):
+# 		mytweet = get_tweets_from_term("popsicle")
+# 		testtweet = Tweet(mytweet["statuses"][0])
+# 		self.assertEqual(type(testtweet.num_favorites), type(4))
+# 	def test_add_title(self):
+# 		mytweet = get_tweets_from_term("popsicle")
+# 		testtweet = Tweet(mytweet["statuses"][0])
+# 		testtweet.add_title("Not a real movie")
+# 		self.assertEqual(testtweet.title, "Not a real movie")
+
+# if __name__ == "__main__":
+# 	unittest.main(verbosity=2)
